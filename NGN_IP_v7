@@ -1,0 +1,140 @@
+#this script takes the datacenter, row and cab assignments for a cab in the carbonite ngn network and produces IP assignments
+print ("This script produces IP and subnet assignments in the Carbonite NGN network based on the switch's physical location in the data center")
+print ("")
+#loop this script if user selects "y" when promted at end of script 
+script_loop = 1 ##required value for script to run first time
+while script_loop == 1:
+
+    #define variables, set default network as 10.0.0.0/25, with correct inputs the subnet will change to correct IPs, force lower case letters
+    input_DC = input('Enter the three character ID, such as chl for Chandler: ').lower() ##force lower case letters
+    input_row = input('Enter the row number: ')
+    input_cab = input('Enter the cab number: ')
+    stor_cab = input('Is this a storage cab?  type y for yes: ')
+    a = 1
+    b = 1
+    stor_ip = 7
+    drac_ip = 39
+    enclosure_ip = 71
+    drac_port = 19
+    enclosure_port = 28
+    pdu_port = 46
+    scale = 16
+    nibble_num_bits = 4
+    #create variables with default value of "0"
+    second_octet = str(0)
+    third_octet = str(0)
+    fourth_octet = str(0)
+    bin_input_row = str(0)
+    bin_input_cab = str (0)
+    bin_third_octet = bin(0)
+    #exception variable determines if IPs are printed at end of script, if at any point exception becomes 1, an exception message prints with no IP assignments
+    exception = 0
+
+    
+
+    #second octet, add datacenters as ngn expands
+    if input_DC == "chl":
+        second_octet = str(131)
+    else:
+        print (input_DC+" does not participate in this IP scheme, try again please")
+        exception = 1
+
+    #third octet, hex to decimal conversion based on row and cab input, valid rows are 01-15, valid cabs are 01-16
+    #convert input from str to int
+    int_input_row = int(input_row)
+    int_input_cab = int(input_cab)
+    #convert input from int to hex
+    hex_input_row = hex(int_input_row)[2:]
+    hex_input_cab = hex(int_input_cab)[2:]
+    #convert input from hex to binary in string format
+    bin_input_row = bin(int(hex_input_row,scale))[2:].zfill(nibble_num_bits)
+    bin_input_cab = bin(int(hex_input_cab,scale))[2:].zfill(nibble_num_bits)
+    #exceptions
+    if int_input_row == 00:
+        print ("there is no row 00, please try again")
+        exception = 1
+    elif int_input_row >= 15:
+        print ("at this time our ngn IP scheme does not permit more than 14 rows, please contact neteng if this does not fit your needs")
+        exception = 1
+    if int_input_cab == 00:
+        print ("there is no cab 00, please try again")
+        exception = 1
+    elif int_input_cab >= 16:
+        print ("at this time our ngn IP scheme does not permit more than 15 cabs per row, please contact neteng if this does not fit your needs")
+        exception = 1
+    ##need to add exceptions for incorrect char types input
+
+
+    #concatenate third octet binary values
+    concat_third_octet = bin_input_row + bin_input_cab
+    #bin_third_octet = bin(concat_third_octet)
+
+    #convert third octet from binary to decimal
+    third_octet = str(int(concat_third_octet, 2))
+
+    #testing:
+    #print (input_row)
+    #print (input_cab)
+    #print (int_input_row)
+    #print (int_input_cab)
+    #print ("binary row = " + bin_input_row)
+    #print ("binary cab = " + bin_input_cab)
+    #print ("binary third octet = " + concat_third_octet)
+    #print (exception)
+    #print (stor_cab)
+
+    #output variables
+    rack_network_str = ("10."+second_octet+"."+third_octet+"."+fourth_octet)
+    first_three_octet = ("10."+second_octet+"."+third_octet+".")
+
+
+    #print rack subnet to user with exception
+    if exception == 0:
+        print ("")
+        print ("this rack's subnet is "+rack_network_str+"/25")
+        print ("switch name: "+input_DC+"-row"+str(input_row)+"-cab"+str(input_cab))
+        print ("switch mgmt ip address: "+first_three_octet+"33")
+        print ("production server subnet: " + first_three_octet +  str(0) + "/27")
+        print ("mgmt subnet: " + first_three_octet + str(32) + "/27")
+        print ("non-prod/non-mgmt subnet: " + first_three_octet + str(64) + "/27")
+        print ("reserved future use subnet: " + first_three_octet + str(96) + "/27")
+    else:
+        print ("you failed, please try again")
+
+    #fourth octet
+    if exception == 0:
+        if stor_cab == "y":
+            print ("")
+            print ("")
+            print ("storage cab IP assignments:")
+            print ("")
+            print ("storage gateway: " + first_three_octet +  str(1))
+            print ("iDRAC/PDU gateway: " + first_three_octet + str(33))
+            print ("enclosure gateway: " + first_three_octet + str(65))
+            print ("subnet mask: 255.255.255.224")
+            print ("")
+            while a < 10:
+                print ("storage" + str(a))
+                print ("IP address= " + first_three_octet + str(stor_ip) + " Eth0 - switch port " + str(a-1) + ", Eth1 - switch port " + str(9+a-1))
+                print ("iDRAC IP address= " + first_three_octet + str(drac_ip) + " switch port " + str(drac_port-1))
+                print ("enclosure IP address= " + first_three_octet + str(enclosure_ip) + " Eth0 - switch port " + str(enclosure_port-1) + ", Eth1 - switch port " + str(enclosure_port))
+                a += 1
+                stor_ip += 1
+                drac_ip += 1
+                enclosure_ip += 1
+                drac_port += 1
+                enclosure_port += 2
+                pdu_port += 1
+                print ("")
+            while b < 4:
+                print ("pdu" + str(b) + " IP address= " + first_three_octet + str(drac_ip) + " switch port " + str(enclosure_port-1))
+                b += 1
+                drac_ip += 1
+                enclosure_port += 1
+    print ("")
+    input_repeat = input('Would you like to run script again?  Type y for yes: ')
+    if input_repeat == "y":
+        script_loop = 1
+    else:
+        script_loop = 0
+
